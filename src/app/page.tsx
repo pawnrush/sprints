@@ -1,103 +1,127 @@
-import Image from "next/image";
+// FILE: src/app/page.tsx
+// This is your main application page with the navigation shell.
+// Please replace the entire contents of your page.tsx with this code.
 
-export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+"use client";
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+import React, { useState } from 'react';
+
+// --- ICONS ---
+const DashboardIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></svg>
+);
+const SettingsIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 0 2l-.15.08a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l-.22-.38a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1 0-2l.15.08a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+);
+const AdminIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+);
+const CompassIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"></polygon></svg>
+);
+
+// --- AUTH & ROLES ---
+const ROLES = { ADMIN: 'Admin', TEACHER: 'Teacher', PARENT: 'Parent' };
+
+// --- TYPESCRIPT INTERFACES ---
+interface User {
+  id: number;
+  name: string;
+  role: string;
+}
+
+const mockUsers: User[] = [
+  { id: 1, name: 'Dr. Evelyn Reed', role: ROLES.ADMIN },
+  { id: 2, name: 'Mr. David Chen', role: ROLES.TEACHER },
+  { id: 3, name: 'Sarah Carter', role: ROLES.PARENT },
+];
+
+// --- PAGE COMPONENTS ---
+const DashboardPage = ({ currentUser }: { currentUser: User }) => {
+    return (
+        <div>
+            <h1 className="text-4xl font-bold text-gray-800 mb-2">Dashboard</h1>
+            <p className="text-gray-600 mb-6">Welcome, {currentUser.name}. This is your dashboard view.</p>
+            <div className="p-8 bg-white rounded-2xl shadow-md">
+                <div className="text-center text-gray-400 p-8 border-2 border-dashed rounded-lg">
+                    <p>Charts and data visualizations will be displayed here.</p>
+                </div>
+            </div>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+    );
+};
+const AdminPage = () => ( <div className="w-full max-w-4xl p-8 bg-white rounded-2xl shadow-md"><h1 className="text-4xl font-bold text-gray-800">Admin Panel</h1><p className="mt-4 text-gray-600">User management and system settings will go here.</p></div> );
+const SettingsPage = () => ( <div className="w-full max-w-4xl p-8 bg-white rounded-2xl shadow-md"><h1 className="text-4xl font-bold text-gray-800">Settings</h1><p className="mt-4 text-gray-600">User preferences and app settings will go here.</p></div> );
+
+// --- LOGIN SCREEN ---
+const LoginScreen = ({ onLogin }: { onLogin: (user: User) => void }) => (
+    <div className="flex min-h-screen items-center justify-center bg-gray-100">
+        <div className="w-full max-w-sm p-8 bg-white rounded-2xl shadow-lg space-y-4">
+            <div className="flex items-center space-x-3 justify-center">
+                <CompassIcon />
+                <h1 className="text-3xl font-bold text-gray-800">ClassCompass</h1>
+            </div>
+            <h2 className="text-center text-xl font-semibold text-gray-700 pt-4">Select a user to log in</h2>
+            <div className="space-y-2">
+                {mockUsers.map(user => (
+                    <button key={user.id} onClick={() => onLogin(user)} className="w-full px-4 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-blue-100 hover:text-blue-700 transition-colors text-left">
+                        <p className="font-semibold">{user.name}</p>
+                        <p className="text-sm text-gray-500">{user.role}</p>
+                    </button>
+                ))}
+            </div>
+        </div>
+    </div>
+);
+
+// --- MAIN APP COMPONENT ---
+export default function App() {
+  const [currentPage, setCurrentPage] = useState('dashboard');
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  
+  const handleLogin = (user: User) => { setCurrentUser(user); setCurrentPage('dashboard'); };
+  const handleLogout = () => { setCurrentUser(null); };
+
+  if (!currentUser) { return <LoginScreen onLogin={handleLogin} />; }
+  
+  const renderPage = () => {
+    switch (currentPage) {
+      case 'admin': return <AdminPage />;
+      case 'settings': return <SettingsPage />;
+      case 'dashboard': default: return <DashboardPage currentUser={currentUser} />;
+    }
+  };
+  
+  const NavLink = ({ pageName, icon, children }: { pageName: string; icon: React.ReactNode; children: React.ReactNode }) => (
+    <button onClick={() => setCurrentPage(pageName)} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-all ${currentPage === pageName ? 'bg-blue-500 text-white shadow-md' : 'text-gray-500 hover:bg-gray-200 hover:text-gray-800'}`}>
+        {icon}
+        <span className="font-semibold">{children}</span>
+    </button>
+  );
+
+  return (
+    <div className="flex h-screen bg-gray-100 font-sans">
+      <nav className="w-64 bg-white p-6 shadow-lg flex flex-col justify-between">
+        <div>
+            <div className="flex items-center space-x-3 mb-10">
+                <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-xl">
+                    <CompassIcon/>
+                </div>
+                <h1 className="text-2xl font-bold text-gray-800">ClassCompass</h1>
+            </div>
+            <div className="space-y-4">
+                <NavLink pageName="dashboard" icon={<DashboardIcon />}>Dashboard</NavLink>
+                {currentUser.role === ROLES.ADMIN && <NavLink pageName="admin" icon={<AdminIcon />}>Admin</NavLink>}
+                <NavLink pageName="settings" icon={<SettingsIcon />}>Settings</NavLink>
+            </div>
+        </div>
+        <div className="text-center p-2 border-t">
+            <p className="text-sm font-semibold">{currentUser.name}</p>
+            <p className="text-xs text-gray-500">{currentUser.role}</p>
+            <button onClick={handleLogout} className="text-xs text-blue-500 hover:underline mt-2">Log Out</button>
+        </div>
+      </nav>
+      <main className="flex-1 p-10 overflow-y-auto">{renderPage()}</main>
     </div>
   );
 }
