@@ -1,6 +1,5 @@
 // FILE: src/app/page.tsx
-// This is your main application page with all features re-integrated.
-// Please replace the entire contents of your page.tsx with this code.
+// This is your main application page with all components in one file to ensure a successful build.
 
 "use client";
 
@@ -50,91 +49,61 @@ const FrequencyLineChart = ({ data }: { data: any[] }) => ( <ChartContainer titl
 const AbcBarChart = ({ data, dataKey, title }: { data: any[], dataKey: string, title: string }) => ( <ChartContainer title={title}><Recharts.ResponsiveContainer width="100%" height="90%"><Recharts.BarChart data={data} layout="vertical" margin={{ top: 5, right: 20, left: 20, bottom: 5 }}><Recharts.CartesianGrid strokeDasharray="3 3" /><Recharts.XAxis type="number" allowDecimals={false}/><Recharts.YAxis dataKey="name" type="category" width={120} /><Recharts.Tooltip /><Recharts.Bar dataKey={dataKey} fill="#f59e0b" barSize={20} /></Recharts.BarChart></Recharts.ResponsiveContainer></ChartContainer> );
 const BehaviorHeatmap = ({ data }: { data: any[] }) => { const intensityColors: { [key: number]: string } = { 1: '#fde68a', 2: '#f97316', 3: '#b91c1c' }; const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']; return ( <ChartContainer title="Behavior Intensity by Time of Day"><Recharts.ResponsiveContainer width="100%" height="90%"><Recharts.ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}><Recharts.CartesianGrid /><Recharts.XAxis type="number" dataKey="time" name="Time" domain={[7.5, 16.75]} tickFormatter={(time) => `${Math.floor(time)}:${String(Math.round((time % 1) * 60)).padStart(2, '0')}`} /><Recharts.YAxis type="number" dataKey="day" name="Day" domain={[0, 6]} tickFormatter={(day) => weekDays[day]} /><Recharts.ZAxis dataKey="intensity" range={[100, 500]} /><Recharts.Tooltip cursor={{ strokeDasharray: '3 3' }} content={({ active, payload }: any) => { if (active && payload && payload.length) { const data = payload[0].payload; const intensityLevels: { [key: number]: string } = { 1: 'Low', 2: 'Moderate', 3: 'High' }; const time = `${Math.floor(data.time)}:${String(Math.round((data.time % 1) * 60)).padStart(2, '0')}`; return <div className="bg-white p-2 border rounded shadow-lg"> <p>{`Time: ${time}`}</p> <p>{`Day: ${weekDays[data.day]}`}</p><p>{`Intensity: ${intensityLevels[data.intensity]}`}</p></div>; } return null; }} /><Recharts.Scatter name="Observations" data={data}>{data.map((entry: any, index: number) => { const cellColor = intensityColors[entry.intensity] || "#ccc"; return <Recharts.Cell key={`cell-${index}`} fill={cellColor} />; })}</Recharts.Scatter></Recharts.ScatterChart></Recharts.ResponsiveContainer></ChartContainer> ); };
 
-// --- PAGE COMPONENTS ---
-const DashboardPage = ({ currentUser }: { currentUser: User }) => {
-    const availableStudents = students.filter(s => currentUser.studentIds.includes(s.id));
-    const [selectedStudentId, setSelectedStudentId] = useState(availableStudents[0]?.id);
+// --- DATA COLLECTION COMPONENTS ---
+const DataCollectionToolContainer = ({ title, children }: { title: string, children: React.ReactNode }) => ( <div className="bg-white rounded-2xl shadow-subtle p-6">{title && <h3 className="text-lg font-semibold text-gray-700 mb-4">{title}</h3>}{children}</div> );
+
+const FrequencyTracker = ({ title, behaviorList, onLog, isTargetBehavior }: { title: string; behaviorList: string[]; onLog: (data: any) => void; isTargetBehavior: boolean; }) => {
+    const [behavior, setBehavior] = useState(behaviorList[0] || '');
+    const [frequency, setFrequency] = useState(0);
+    const [intensity, setIntensity] = useState('Low');
+    const [sessionLogs, setSessionLogs] = useState<{time: string, freq: number}[]>([]);
+    const [chartsReady, setChartsReady] = useState(false);
+
+    useEffect(() => setChartsReady(!!(window as any).Recharts), []);
+
+    const handleLog = () => {
+        if (!behavior) { alert("Please select a behavior."); return; }
+        const logEntry = { type: title, behavior, frequency: 1, intensity: isTargetBehavior ? intensity : undefined, timestamp: new Date().toISOString() };
+        setFrequency(f => f + 1);
+        setSessionLogs(prev => [...prev, { time: new Date().toLocaleTimeString(), freq: prev.length + 1 }]);
+        onLog(logEntry);
+    };
     
-    useEffect(() => {
-        if (!availableStudents.find(s => s.id === selectedStudentId)) {
-            setSelectedStudentId(availableStudents[0]?.id);
-        }
-    }, [currentUser, availableStudents, selectedStudentId]);
-
-    const filteredLogs = observationLogs.filter(log => log.studentId === selectedStudentId);
-    const freqData = processFrequencyData(filteredLogs);
-    const abcData = processAbcData(filteredLogs);
-    const heatmapData = processHeatmapData(filteredLogs);
-
+    const handleDecrement = () => { setFrequency(f => Math.max(0, f - 1)); };
+    const resetSession = () => { setFrequency(0); setSessionLogs([]); };
+    
     return (
-        <div>
-            <h1 className="text-4xl font-bold text-gray-800 mb-2">Dashboard</h1>
-            <p className="text-gray-600 mb-6">Visualize student behavior data.</p>
-            
-            <div className="flex space-x-4 mb-6 p-4 bg-white rounded-2xl shadow-subtle">
-                <div>
-                    <label htmlFor="student-filter" className="block text-sm font-medium text-gray-700">Student</label>
-                    {currentUser.role === ROLES.PARENT ? (
-                        <p className="text-lg font-semibold mt-1">{availableStudents[0]?.name || 'No student assigned'}</p>
-                    ) : (
-                        <select id="student-filter" value={selectedStudentId} onChange={e => setSelectedStudentId(Number(e.target.value))} className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-amber-500 focus:border-amber-500 sm:text-sm rounded-md">
-                            {availableStudents.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                        </select>
-                    )}
+        <DataCollectionToolContainer title={title}>
+            <div className="space-y-4">
+                <div className="relative"><select value={behavior} onChange={e => setBehavior(e.target.value)} className="w-full px-4 py-3 bg-gray-100 rounded-lg appearance-none"><option value="" disabled>Select Behavior</option>{behaviorList.map(opt => <option key={opt} value={opt}>{opt}</option>)}</select><div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none"><ChevronDownIcon /></div></div>
+                {isTargetBehavior && ( <div><label className="block text-sm font-medium text-gray-700 mb-1">Intensity</label><div className="flex bg-gray-200 rounded-lg p-1">{['Low', 'Moderate', 'High'].map(level => ( <button key={level} onClick={() => setIntensity(level)} className={`w-full py-1 text-sm rounded-md transition-all ${intensity === level ? 'bg-white text-amber-600 shadow' : 'text-gray-600'}`}>{level}</button>))}</div></div> )}
+                <div className="flex items-center space-x-4 justify-center">
+                    <button onClick={handleDecrement} className="p-3 bg-gray-200 rounded-full hover:bg-gray-300"><MinusIcon /></button>
+                    <span className="text-5xl font-mono w-24 text-center">{frequency}</span>
+                    <button onClick={handleLog} className="p-3 bg-amber-500 text-white rounded-full hover:bg-amber-600"><PlusIcon /></button>
                 </div>
+                 {chartsReady && sessionLogs.length > 0 && ( <div className="h-40 -mx-4"><Recharts.ResponsiveContainer width="100%" height="100%"><Recharts.LineChart data={sessionLogs} ><Recharts.Tooltip /><Recharts.Line type="stepAfter" dataKey="freq" stroke="#f97316" strokeWidth={2} name="Count" /></Recharts.LineChart></Recharts.ResponsiveContainer></div> )}
+                <button onClick={resetSession} className="w-full text-xs text-gray-500 hover:underline">Reset Session</button>
             </div>
-
-            <ChartGrid>
-                <FrequencyLineChart data={freqData} />
-                <BehaviorHeatmap data={heatmapData} />
-                <AbcBarChart data={abcData.antecedents} dataKey="count" title="Antecedent Counts" />
-                <AbcBarChart data={abcData.behaviors} dataKey="count" title="Behavior Counts" />
-                <AbcBarChart data={abcData.consequences} dataKey="count" title="Consequence Counts" />
-            </ChartGrid>
-        </div>
+        </DataCollectionToolContainer>
     );
 };
-const DataCollectionPage = () => ( <div><h1 className="text-4xl font-bold text-gray-800 mb-2">Data Collection</h1><p className="text-gray-600 mb-6">Real-time observation and tracking tools.</p><div className="grid grid-cols-1 md:grid-cols-2 gap-6"><p className="p-4 bg-yellow-100 text-yellow-800 rounded-lg text-center md:col-span-2">Data collection tools are under construction.</p></div></div> );
+
+// --- PAGE COMPONENTS ---
+const DashboardPage = ({ currentUser }: { currentUser: User }) => { const availableStudents = students.filter(s => currentUser.studentIds.includes(s.id)); const [selectedStudentId, setSelectedStudentId] = useState(availableStudents[0]?.id); useEffect(() => { if (!availableStudents.find(s => s.id === selectedStudentId)) { setSelectedStudentId(availableStudents[0]?.id); } }, [currentUser, availableStudents, selectedStudentId]); const filteredLogs = observationLogs.filter(log => log.studentId === selectedStudentId); const freqData = processFrequencyData(filteredLogs); const abcData = processAbcData(filteredLogs); const heatmapData = processHeatmapData(filteredLogs); return ( <div> <h1 className="text-4xl font-bold text-gray-800 mb-2">Dashboard</h1> <p className="text-gray-600 mb-6">Visualize student behavior data.</p> <div className="flex space-x-4 mb-6 p-4 bg-white rounded-2xl shadow-subtle"> <div> <label htmlFor="student-filter" className="block text-sm font-medium text-gray-700">Student</label> {currentUser.role === ROLES.PARENT ? ( <p className="text-lg font-semibold mt-1">{availableStudents[0]?.name || 'No student assigned'}</p> ) : ( <select id="student-filter" value={selectedStudentId} onChange={e => setSelectedStudentId(Number(e.target.value))} className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-amber-500 focus:border-amber-500 sm:text-sm rounded-md"> {availableStudents.map(s => <option key={s.id} value={s.id}>{s.name}</option>)} </select> )} </div> </div> <ChartGrid> <FrequencyLineChart data={freqData} /> <BehaviorHeatmap data={heatmapData} /> <AbcBarChart data={abcData.antecedents} dataKey="count" title="Antecedent Counts" /> <AbcBarChart data={abcData.behaviors} dataKey="count" title="Behavior Counts" /> <AbcBarChart data={abcData.consequences} dataKey="count" title="Consequence Counts" /> </ChartGrid> </div> ); };
+const DataCollectionPage = () => { const handleLog = (data: any) => { console.log("Data Logged: ", data); }; return ( <div><h1 className="text-4xl font-bold text-gray-800 mb-2">Data Collection</h1><p className="text-gray-600 mb-6">Real-time observation and tracking tools.</p><div className="grid grid-cols-1 md:grid-cols-2 gap-6"><FrequencyTracker title="Target Behavior" behaviorList={behaviorOptions} onLog={handleLog} isTargetBehavior={true} /><FrequencyTracker title="Replacement Behavior" behaviorList={replacementBehaviorOptions} onLog={handleLog} isTargetBehavior={false} /></div></div> ); };
 const AdminPage = () => ( <div className="w-full max-w-4xl p-8 bg-white rounded-2xl shadow-md"><h1 className="text-4xl font-bold text-gray-800">Admin Panel</h1><p className="mt-4 text-gray-600">User management and system settings will go here.</p></div> );
 const SettingsPage = () => ( <div className="w-full max-w-4xl p-8 bg-white rounded-2xl shadow-md"><h1 className="text-4xl font-bold text-gray-800">Settings</h1><p className="mt-4 text-gray-600">User preferences and app settings will go here.</p></div> );
 
 // --- LOGIN SCREEN ---
-const LoginScreen = ({ onLogin }: { onLogin: (user: User) => void }) => (
-    <div className="flex min-h-screen items-center justify-center bg-gray-100">
-        <div className="w-full max-w-sm p-8 bg-white rounded-2xl shadow-lg space-y-4">
-            <div className="flex items-center space-x-3 justify-center text-amber-600">
-                <CompassIcon />
-                <h1 className="text-3xl font-bold text-gray-800">ClassCompass</h1>
-            </div>
-            <h2 className="text-center text-xl font-semibold text-gray-700 pt-4">Select a user to log in</h2>
-            <div className="space-y-2">
-                {mockUsers.map(user => (
-                    <button key={user.id} onClick={() => onLogin(user)} className="w-full px-4 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-amber-100 hover:text-amber-700 transition-colors text-left">
-                        <p className="font-semibold">{user.name}</p>
-                        <p className="text-sm text-gray-500">{user.role}</p>
-                    </button>
-                ))}
-            </div>
-        </div>
-    </div>
-);
+const LoginScreen = ({ onLogin }: { onLogin: (user: User) => void }) => ( <div className="flex min-h-screen items-center justify-center bg-gray-100"><div className="w-full max-w-sm p-8 bg-white rounded-2xl shadow-lg space-y-4"><div className="flex items-center space-x-3 justify-center text-amber-600"><CompassIcon /><h1 className="text-3xl font-bold text-gray-800">ClassCompass</h1></div><h2 className="text-center text-xl font-semibold text-gray-700 pt-4">Select a user to log in</h2><div className="space-y-2">{mockUsers.map(user => ( <button key={user.id} onClick={() => onLogin(user)} className="w-full px-4 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-amber-100 hover:text-amber-700 transition-colors text-left"><p className="font-semibold">{user.name}</p><p className="text-sm text-gray-500">{user.role}</p></button>))}</div></div></div> );
 
 // --- MAIN APP COMPONENT ---
 export default function App() {
   const [currentPage, setCurrentPage] = useState('dashboard');
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   
-  useEffect(() => {
-      const scriptId = 'recharts-script';
-      if (!document.getElementById(scriptId)) {
-          const script = document.createElement('script');
-          script.id = scriptId;
-          script.src = "https://unpkg.com/recharts/umd/Recharts.min.js";
-          script.async = true;
-          script.onload = () => console.log("Recharts script loaded.");
-          document.head.appendChild(script);
-      }
-  }, []);
+  useEffect(() => { const scriptId = 'recharts-script'; if (!document.getElementById(scriptId)) { const script = document.createElement('script'); script.id = scriptId; script.src = "https://unpkg.com/recharts/umd/Recharts.min.js"; script.async = true; script.onload = () => console.log("Recharts script loaded."); document.head.appendChild(script); } }, []);
   
   const handleLogin = (user: User) => { setCurrentUser(user); setCurrentPage('dashboard'); };
   const handleLogout = () => { setCurrentUser(null); };
